@@ -53,17 +53,17 @@ A wrapper element for layouts with two drawers.
     <!-- Right Drawer -->
     <content id="rightDrawerContent" select="app-drawer[align='right']"></content>
 
-    <content select="app-header"></content>
+    <content select="app-header" id="appHeader"></content>
 
     <!-- content goes here -->
     <div id="contentContainer">
-      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'left', _leftDrawerOpen)]]"></div>
+      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'left', _leftDrawerOpen, _leftDrawer)]]"></div>
 
       <div class="flexchild">
         <content select="[content]"></content>
       </div>
 
-      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'right', _rightDrawerOpen)]]"></div>
+      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'right', _rightDrawerOpen, _rightDrawer)]]"></div>
     </div>
 
   </template>
@@ -114,13 +114,15 @@ A wrapper element for layouts with two drawers.
          * Stores a reference to the left drawer if set manually
          */
         _leftDrawer: {
-          type: Object
+          type: Object,
+          value: function() { return null; }
         },
         /**
          * Stores a reference to the right drawer if set manually
          */
         _rightDrawer: {
-          type: Object
+          type: Object,
+          value: function() { return null; }
         },
         /**
          * True if the left drawer is open.
@@ -182,6 +184,28 @@ A wrapper element for layouts with two drawers.
        */
       set leftDrawer(leftDrawer) {
         this._leftDrawer = leftDrawer;
+
+        if (this._leftDrawer) {
+          // register event listener
+          this.listen(this._leftDrawer, 'app-drawer-transitioned', '_onLeftDrawerTransitioned');
+          this._leftDrawer.opened = this._leftDrawerOpen;
+        }
+
+        // toggle left-drawer-toggle button
+        this.getContentChildren('#appHeader')[0].querySelector('[left-drawer-toggle]').toggleAttribute('hidden', !this._leftDrawer);
+
+        // calculate state of drawer and its space
+        this._observeDrawerPersistent(this._isLargeLayout, this._isMediumLayout);
+        this._triggerDrawerSpaceRecalculation != this._triggerDrawerSpaceRecalculation;
+      },
+
+      /**
+       * Listens to open/close events of the left drawer and synchronizes the layout's internal state.
+       *
+       * @param e
+       */
+      _onLeftDrawerTransitioned: function(e) {
+        this._leftDrawerOpen = e.target.opened;
       },
 
       /**
@@ -202,6 +226,24 @@ A wrapper element for layouts with two drawers.
        */
       set rightDrawer(rightDrawer) {
         this._rightDrawer = rightDrawer;
+
+        if (this._rightDrawer) {
+          // register event listener
+          this.listen(this._rightDrawer, 'app-drawer-transitioned', '_onRightDrawerTransitioned');
+          this._rightDrawer.opened = this._rightDrawerOpen;
+        }
+        // calculate state of drawer and its space
+        this._observeDrawerPersistent(this._isLargeLayout, this._isMediumLayout);
+        this._triggerDrawerSpaceRecalculation != this._triggerDrawerSpaceRecalculation;
+      },
+
+      /**
+       * Listens to open/close events of the right drawer and synchronizes the layout's internal state.
+       *
+       * @param e
+       */
+      _onRightDrawerTransitioned: function(e) {
+        this._rightDrawerOpen = e.target.opened;
       },
 
       /**
@@ -237,9 +279,9 @@ A wrapper element for layouts with two drawers.
       },
 
       /**
-       * Observer of the '_isLargeLayout' property. This method closes both drawers when switching from large to small
-       * layout. When switching back (from small to large), this method makes sure to reset the stateof both drawers
-       * to the state it was before switching to small.
+       * Observer of the '_isLargeLayout' property. This method closes the non-prioritized drawer when switching from
+       * large to medium layout. When switching back (from medium to large), this method makes sure to reset the stateof
+       * the non-prioritized drawer to the state it was before switching; or if it is opened, it will keep being open.
        *
        * @param newValue
        * @param oldValue
@@ -263,6 +305,15 @@ A wrapper element for layouts with two drawers.
         }
       },
 
+      /**
+       * Observer of the '_isMediumLayout' property. This method closes both drawers when switching from medium to
+       * small. When changing back, opens the prioritized drawer if it was open before.
+       *
+       * @param newValue
+       * @param oldValue
+       * @private
+       */
+       */
       _isMediumLayoutChanged: function(newValue, oldValue) {
         if (newValue) {
           // we are switching from small to medium
@@ -288,19 +339,21 @@ A wrapper element for layouts with two drawers.
        * @private
        */
       toggleLeftDrawer: function() {
-        if (!this._isLargeLayout) {
-          if (this._isMediumLayout) {
-            // we are in medium layout
-            if (this.prioritizedDrawer === 'left') {
+        if (this.leftDrawer) {
+          if (!this._isLargeLayout) {
+            if (this._isMediumLayout) {
+              // we are in medium layout
+              if (this.prioritizedDrawer === 'left') {
+                this._rightDrawerOpen = false;
+              }
+            } else {
+              // we are in small layout
               this._rightDrawerOpen = false;
             }
-          } else {
-            // we are in small layout
-            this._rightDrawerOpen = false;
           }
-        }
 
-        this._leftDrawerOpen = !this._leftDrawerOpen;
+          this._leftDrawerOpen = !this._leftDrawerOpen;
+        }
       },
 
       /**
@@ -311,19 +364,21 @@ A wrapper element for layouts with two drawers.
        * @private
        */
       toggleRightDrawer: function() {
-        if (!this._isLargeLayout) {
-          if (this._isMediumLayout) {
-            // we are in medium layout
-            if (this.prioritizedDrawer === 'right') {
+        if (this.rightDrawer) {
+          if (!this._isLargeLayout) {
+            if (this._isMediumLayout) {
+              // we are in medium layout
+              if (this.prioritizedDrawer === 'right') {
+                this._leftDrawerOpen = false;
+              }
+            } else {
+              // we are in small layout
               this._leftDrawerOpen = false;
             }
-          } else {
-            // we are in small layout
-            this._leftDrawerOpen = false;
           }
-        }
 
-        this._rightDrawerOpen = !this._rightDrawerOpen;
+          this._rightDrawerOpen = !this._rightDrawerOpen;
+        }
       },
 
       /**
@@ -339,6 +394,12 @@ A wrapper element for layouts with two drawers.
        * @private
        */
       _computeDrawerSpaceHidden: function(isLargeLayout, isMediumLayout, drawerAlign, drawerOpen) {
+        if ((drawerAlign === 'left') && (!this.leftDrawer)) {
+          return true;
+        } else if ((drawerAlign === 'right') && (!this.rightDrawer)) {
+          return true;
+        }
+
         if (isLargeLayout) {
           return !drawerOpen;
         } else if (isMediumLayout) {
