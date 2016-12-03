@@ -1,0 +1,419 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../iron-media-query/iron-media-query.html">
+
+<!--
+`app-double-drawer-layout`
+A wrapper element for layouts with two drawers.
+
+@demo demo/index.html 
+-->
+
+<dom-module id="app-double-drawer-layout">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+
+      :host([fullbleed]) {
+        @apply(--layout-fit);
+      }
+
+      #contentContainer {
+        @apply(--layout-horizontal);
+        margin-top: 64px;
+      }
+
+      .flexchild {
+        @apply(--layout-flex);
+      }
+
+      .drawer {
+        width: 256px;
+      }
+
+      :host ::content app-header {
+        @apply(--layout-fixed-top);
+        z-index: 1;
+      }
+
+      :host ::content app-drawer {
+        margin-top: 64px;
+      }
+
+    </style>
+
+    <iron-media-query query="(min-width: [[mediumWidth]])" query-matches="{{_isLargeLayout}}"></iron-media-query>
+    <iron-media-query query="(min-width: [[smallWidth]])" query-matches="{{_isMediumLayout}}"></iron-media-query>
+
+    <!-- Left Drawer -->
+    <content id="leftDrawerContent" select="app-drawer[align='left']"></content>
+
+    <!-- Right Drawer -->
+    <content id="rightDrawerContent" select="app-drawer[align='right']"></content>
+
+    <content select="app-header"></content>
+
+    <!-- content goes here -->
+    <div id="contentContainer">
+      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'left', _leftDrawerOpen)]]"></div>
+
+      <div class="flexchild">
+        <content select="[content]"></content>
+      </div>
+
+      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'right', _rightDrawerOpen)]]"></div>
+    </div>
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'app-double-drawer-layout',
+
+      properties: {
+        /**
+         * If the viewport's width is smaller than this value, the panel will change to medium layout, i.e. the
+         * non-prioritized drawer will be closed.
+         */
+        mediumWidth: {
+          type: String,
+          value: '1280px'
+        },
+        /**
+         * If the viewport's width is smaller than this value, the panel will change to small layout, i.e. both drawers
+         * will be closed.
+         */
+        smallWidth: {
+          type: String,
+          value: '960px'
+        },
+        /**
+         * True if we are in a large layout, that is, both drawers can be open persistently.
+         */
+        _isLargeLayout: {
+          type: Boolean,
+          observer: '_isLargeLayoutChanged'
+        },
+        /**
+         * True if we are in a medium wide layout, that is, only one of the drawers might be opened persistently.
+         */
+        _isMediumLayout: {
+          type: Boolean,
+          observer: '_isMediumLayoutChanged'
+        },
+        /**
+         * Defines the prioritized drawer, i.e. the drawer that can still be open persistently in medium layout.
+         */
+        prioritizedDrawer: {
+          type: String,
+          value: 'right'
+        },
+        /**
+         * Stores a reference to the left drawer if set manually
+         */
+        _leftDrawer: {
+          type: Object
+        },
+        /**
+         * Stores a reference to the right drawer if set manually
+         */
+        _rightDrawer: {
+          type: Object
+        },
+        /**
+         * True if the left drawer is open.
+         */
+        _leftDrawerOpen: {
+          type: Boolean,
+          value: true,
+          observer: '_leftDrawerOpenChanged'
+        },
+        /**
+         * Caches the opened state of the left drawer in large layout. This is to restore the state of the drawer when
+         * switching from large to small layout and back.
+         */
+        _leftDrawerOpenInLargeLayout: {
+          type: Boolean,
+          value: true
+        },
+        /**
+         * True if the right drawer is open.
+         */
+        _rightDrawerOpen: {
+          type: Boolean,
+          value: true,
+          observer: '_rightDrawerOpenChanged'
+        },
+        /**
+         * Caches the opened state of the right drawer in large layout. This is to restore the state of the drawer when
+         * switching from large to small layout and back.
+         */
+        _rightDrawerOpenInLargeLayout: {
+          type: Boolean,
+          value: true
+        }
+      },
+
+      listeners: {
+        'tap': '_tapHandler'
+      },
+
+      observers: [
+        '_observeDrawerPersistent(_isLargeLayout, _isMediumLayout)'
+      ],
+
+      /**
+       * A reference to the left app-drawer element.
+       *
+       * @property leftDrawer
+       */
+      get leftDrawer() {
+        var leftDrawer = this._leftDrawer;
+        if (!leftDrawer) {
+          leftDrawer = Polymer.dom(this.$.leftDrawerContent).getDistributedNodes()[0];
+        }
+        return leftDrawer;
+      },
+
+      /**
+       * Sets the left drawer manually. Use if not set via content distribution.
+       */
+      set leftDrawer(leftDrawer) {
+        this._leftDrawer = leftDrawer;
+      },
+
+      /**
+       * A reference to the left app-drawer element.
+       *
+       * @property rightDrawer
+       */
+      get rightDrawer() {
+        var rightDrawer = this._rightDrawer;
+        if (!rightDrawer) {
+          rightDrawer = Polymer.dom(this.$.rightDrawerContent).getDistributedNodes()[0];
+        }
+        return rightDrawer;
+      },
+
+      /**
+       * Sets the right drawer manually. Use if not set via content distribution.
+       */
+      set rightDrawer(rightDrawer) {
+        this._rightDrawer = rightDrawer;
+      },
+
+      /**
+       * Handles taps on the element.
+       *
+       * @param e
+       */
+      _tapHandler: function(e) {
+        var target = Polymer.dom(e).localTarget;
+        if (target && target.hasAttribute('left-drawer-toggle')) {
+          this.toggleLeftDrawer();
+        } else if (target && target.hasAttribute('right-drawer-toggle')) {
+          this.toggleRightDrawer();
+        }
+      },
+
+      /**
+       * Observes properties that are relevant for calculating persistent state of the drawers. Calculates persistency
+       * and sets it on the drawers.
+       *
+       * @param isLargeLayout
+       * @param isMediumLayout
+       */
+      _observeDrawerPersistent: function(isLargeLayout, isMediumLayout) {
+        var leftDrawer = this.leftDrawer;
+        if (leftDrawer) {
+          leftDrawer.persistent = this._computeDrawerPersistent(isLargeLayout, isMediumLayout, 'left');
+        }
+        var rightDrawer = this.rightDrawer;
+        if (rightDrawer) {
+          rightDrawer.persistent = this._computeDrawerPersistent(isLargeLayout, isMediumLayout, 'right');
+        }
+      },
+
+      /**
+       * Observer of the '_isLargeLayout' property. This method closes both drawers when switching from large to small
+       * layout. When switching back (from small to large), this method makes sure to reset the stateof both drawers
+       * to the state it was before switching to small.
+       *
+       * @param newValue
+       * @param oldValue
+       * @private
+       */
+      _isLargeLayoutChanged: function(newValue, oldValue) {
+        if (newValue) {
+          // we are switching from medium to large
+          this._leftDrawerOpenInLargeLayout = this._leftDrawerOpen || this._leftDrawerOpenInLargeLayout;
+          this._leftDrawerOpen = this._leftDrawerOpenInLargeLayout;
+
+          this._rightDrawerOpenInLargeLayout = this._rightDrawerOpen || this._rightDrawerOpenInLargeLayout;
+          this._rightDrawerOpen = this._rightDrawerOpenInLargeLayout;
+        } else {
+          // we are switching from large to medium
+          if (this.prioritizedDrawer === 'right') {
+            this._leftDrawerOpen = false;
+          } else if (this.prioritizedDrawer === 'left') {
+            this._rightDrawerOpen = false;
+          }
+        }
+      },
+
+      _isMediumLayoutChanged: function(newValue, oldValue) {
+        if (newValue) {
+          // we are switching from small to medium
+          if (this.prioritizedDrawer === 'right') {
+            this._rightDrawerOpenInLargeLayout = this._rightDrawerOpen || this._rightDrawerOpenInLargeLayout;
+            this._rightDrawerOpen = this._rightDrawerOpenInLargeLayout;
+          } else if (this.prioritizedDrawer === 'left') {
+            this._leftDrawerOpenInLargeLayout = this._leftDrawerOpen || this._leftDrawerOpenInLargeLayout;
+            this._leftDrawerOpen = this._leftDrawerOpenInLargeLayout;
+          }
+        } else {
+          // we are switching from medium to small
+          this._leftDrawerOpen = false;
+          this._rightDrawerOpen = false;
+        }
+      },
+
+      /**
+       * Toggles the left drawer. Opens it when closed and closes it when open. In small layout, it additionally
+       * closes the right drawer.
+       *
+       * @param e
+       * @private
+       */
+      toggleLeftDrawer: function() {
+        if (!this._isLargeLayout) {
+          if (this._isMediumLayout) {
+            // we are in medium layout
+            if (this.prioritizedDrawer === 'left') {
+              this._rightDrawerOpen = false;
+            }
+          } else {
+            // we are in small layout
+            this._rightDrawerOpen = false;
+          }
+        }
+
+        this._leftDrawerOpen = !this._leftDrawerOpen;
+      },
+
+      /**
+       * Toggles the right drawer. Opens it when closed and closes it when open. In small layout, it additionally
+       * closes the left drawer.
+       *
+       * @param e
+       * @private
+       */
+      toggleRightDrawer: function() {
+        if (!this._isLargeLayout) {
+          if (this._isMediumLayout) {
+            // we are in medium layout
+            if (this.prioritizedDrawer === 'right') {
+              this._leftDrawerOpen = false;
+            }
+          } else {
+            // we are in small layout
+            this._leftDrawerOpen = false;
+          }
+        }
+
+        this._rightDrawerOpen = !this._rightDrawerOpen;
+      },
+
+      /**
+       * Computes whether the panels reserving spaces for the drawers should be hidden or not. In small layout,
+       * they are always hidden. In medium layout, it depends on whether the drawer is prioritized or not. In large
+       * layout, it depends on whether the drawer is open or not (of course, hidden if not open).
+       *
+       * @param isLargeLayout
+       * @param isMediumLayout
+       * @param drawerAlign either 'left' or 'right'.
+       * @param drawerOpen
+       * @returns {boolean}
+       * @private
+       */
+      _computeDrawerSpaceHidden: function(isLargeLayout, isMediumLayout, drawerAlign, drawerOpen) {
+        if (isLargeLayout) {
+          return !drawerOpen;
+        } else if (isMediumLayout) {
+          if (this.prioritizedDrawer === drawerAlign) {
+            return !drawerOpen;
+          }
+        }
+
+        return true;
+      },
+
+      /**
+       * Computes whether a drawer is persistent or not.
+       *
+       * @param isLargeLayout
+       * @param isMediumLayout
+       * @param drawerAlign
+       * @returns {boolean}
+       * @private
+       */
+      _computeDrawerPersistent: function(isLargeLayout, isMediumLayout, drawerAlign) {
+        if (isLargeLayout) {
+          return true;
+        } else if (isMediumLayout) {
+          if (this.prioritizedDrawer === drawerAlign) {
+            return true;
+          }
+        }
+
+        return false;
+      },
+
+      /**
+       * Observer for the opened state of the left drawer. If in large layout, stores the state.
+       *
+       * @param newValue
+       * @param oldValue
+       * @private
+       */
+      _leftDrawerOpenChanged: function(newValue, oldValue) {
+        var leftDrawer = this.leftDrawer;
+        if (leftDrawer) {
+          leftDrawer.opened = newValue;
+        }
+
+        if (this._isLargeLayout) {
+          this._leftDrawerOpenInLargeLayout = newValue;
+        } else if (this._isMediumLayout) {
+          if (this.prioritizedDrawer === 'left') {
+            this._leftDrawerOpenInLargeLayout = newValue;
+          }
+        }
+      },
+
+      /**
+       * Observer for the opened state of the right drawer. If in large layout, stores the state.
+       *
+       * @param newValue
+       * @param oldValue
+       * @private
+       */
+      _rightDrawerOpenChanged: function(newValue, oldValue) {
+        var rightDrawer = this.rightDrawer;
+        if (rightDrawer) {
+          rightDrawer.opened = newValue;
+        }
+
+        if (this._isLargeLayout) {
+          this._rightDrawerOpenInLargeLayout = newValue;
+        } else if (this._isMediumLayout) {
+          if (this.prioritizedDrawer === 'right') {
+            this._rightDrawerOpenInLargeLayout = newValue;
+          }
+        }
+      }
+    });
+  </script>
+</dom-module>
