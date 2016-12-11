@@ -232,6 +232,10 @@ A wrapper element for layouts with two drawers.
           this.listen(this._rightDrawer, 'app-drawer-transitioned', '_onRightDrawerTransitioned');
           this._rightDrawer.opened = this._rightDrawerOpen;
         }
+
+        // toggle right-drawer-toggle button
+        this.getContentChildren('#appHeader')[0].querySelector('[right-drawer-toggle]').toggleAttribute('hidden', !this._rightDrawer);
+
         // calculate state of drawer and its space
         this._observeDrawerPersistent(this._isLargeLayout, this._isMediumLayout);
         this._triggerDrawerSpaceRecalculation != this._triggerDrawerSpaceRecalculation;
