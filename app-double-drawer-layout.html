@@ -394,19 +394,24 @@ A wrapper element for layouts with two drawers.
        */
       _computeDrawerSpaceHidden: function(isLargeLayout, isMediumLayout, drawerAlign, drawerOpen) {
         if ((drawerAlign === 'left') && (!this.leftDrawer)) {
+          this.fire('drawer-reserve-space-changed', {drawerAlign: drawerAlign, reserveSpace: false});
           return true;
         } else if ((drawerAlign === 'right') && (!this.rightDrawer)) {
+          this.fire('drawer-reserve-space-changed', {drawerAlign: drawerAlign, reserveSpace: false});
           return true;
         }
 
         if (isLargeLayout) {
+          this.fire('drawer-reserve-space-changed', {drawerAlign: drawerAlign, reserveSpace: drawerOpen});
           return !drawerOpen;
         } else if (isMediumLayout) {
           if (this.prioritizedDrawer === drawerAlign) {
+            this.fire('drawer-reserve-space-changed', {drawerAlign: drawerAlign, reserveSpace: drawerOpen});
             return !drawerOpen;
           }
         }
 
+        this.fire('drawer-reserve-space-changed', {drawerAlign: drawerAlign, reserveSpace: false});
         return true;
       },
 
