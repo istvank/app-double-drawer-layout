@@ -57,13 +57,13 @@ A wrapper element for layouts with two drawers.
 
     <!-- content goes here -->
     <div id="contentContainer">
-      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'left', _leftDrawerOpen, _leftDrawer)]]"></div>
+      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'left', leftDrawerOpen, _leftDrawer)]]"></div>
 
       <div class="flexchild">
         <content select="[content]"></content>
       </div>
 
-      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'right', _rightDrawerOpen, _rightDrawer)]]"></div>
+      <div class="drawer" hidden$="[[_computeDrawerSpaceHidden(_isLargeLayout, _isMediumLayout, 'right', rightDrawerOpen, _rightDrawer)]]"></div>
     </div>
 
   </template>
@@ -127,9 +127,10 @@ A wrapper element for layouts with two drawers.
         /**
          * True if the left drawer is open.
          */
-        _leftDrawerOpen: {
+        leftDrawerOpen: {
           type: Boolean,
           value: true,
+          reflectToAttribute: true,
           observer: '_leftDrawerOpenChanged'
         },
         /**
@@ -143,9 +144,10 @@ A wrapper element for layouts with two drawers.
         /**
          * True if the right drawer is open.
          */
-        _rightDrawerOpen: {
+        rightDrawerOpen: {
           type: Boolean,
           value: true,
+          reflectToAttribute: true,
           observer: '_rightDrawerOpenChanged'
         },
         /**
@@ -188,7 +190,7 @@ A wrapper element for layouts with two drawers.
         if (this._leftDrawer) {
           // register event listener
           this.listen(this._leftDrawer, 'app-drawer-transitioned', '_onLeftDrawerTransitioned');
-          this._leftDrawer.opened = this._leftDrawerOpen;
+          this._leftDrawer.opened = this.leftDrawerOpen;
         }
 
         // toggle left-drawer-toggle button
@@ -205,7 +207,7 @@ A wrapper element for layouts with two drawers.
        * @param e
        */
       _onLeftDrawerTransitioned: function(e) {
-        this._leftDrawerOpen = e.target.opened;
+        this.leftDrawerOpen = e.target.opened;
       },
 
       /**
@@ -230,7 +232,7 @@ A wrapper element for layouts with two drawers.
         if (this._rightDrawer) {
           // register event listener
           this.listen(this._rightDrawer, 'app-drawer-transitioned', '_onRightDrawerTransitioned');
-          this._rightDrawer.opened = this._rightDrawerOpen;
+          this._rightDrawer.opened = this.rightDrawerOpen;
         }
 
         // toggle right-drawer-toggle button
@@ -247,7 +249,7 @@ A wrapper element for layouts with two drawers.
        * @param e
        */
       _onRightDrawerTransitioned: function(e) {
-        this._rightDrawerOpen = e.target.opened;
+        this.rightDrawerOpen = e.target.opened;
       },
 
       /**
@@ -294,17 +296,17 @@ A wrapper element for layouts with two drawers.
       _isLargeLayoutChanged: function(newValue, oldValue) {
         if (newValue) {
           // we are switching from medium to large
-          this._leftDrawerOpenInLargeLayout = this._leftDrawerOpen || this._leftDrawerOpenInLargeLayout;
-          this._leftDrawerOpen = this._leftDrawerOpenInLargeLayout;
+          this._leftDrawerOpenInLargeLayout = this.leftDrawerOpen || this._leftDrawerOpenInLargeLayout;
+          this.leftDrawerOpen = this._leftDrawerOpenInLargeLayout;
 
-          this._rightDrawerOpenInLargeLayout = this._rightDrawerOpen || this._rightDrawerOpenInLargeLayout;
-          this._rightDrawerOpen = this._rightDrawerOpenInLargeLayout;
+          this._rightDrawerOpenInLargeLayout = this.rightDrawerOpen || this._rightDrawerOpenInLargeLayout;
+          this.rightDrawerOpen = this._rightDrawerOpenInLargeLayout;
         } else {
           // we are switching from large to medium
           if (this.prioritizedDrawer === 'right') {
-            this._leftDrawerOpen = false;
+            this.leftDrawerOpen = false;
           } else if (this.prioritizedDrawer === 'left') {
-            this._rightDrawerOpen = false;
+            this.rightDrawerOpen = false;
           }
         }
       },
@@ -321,16 +323,16 @@ A wrapper element for layouts with two drawers.
         if (newValue) {
           // we are switching from small to medium
           if (this.prioritizedDrawer === 'right') {
-            this._rightDrawerOpenInLargeLayout = this._rightDrawerOpen || this._rightDrawerOpenInLargeLayout;
-            this._rightDrawerOpen = this._rightDrawerOpenInLargeLayout;
+            this._rightDrawerOpenInLargeLayout = this.rightDrawerOpen || this._rightDrawerOpenInLargeLayout;
+            this.rightDrawerOpen = this._rightDrawerOpenInLargeLayout;
           } else if (this.prioritizedDrawer === 'left') {
-            this._leftDrawerOpenInLargeLayout = this._leftDrawerOpen || this._leftDrawerOpenInLargeLayout;
-            this._leftDrawerOpen = this._leftDrawerOpenInLargeLayout;
+            this._leftDrawerOpenInLargeLayout = this.leftDrawerOpen || this._leftDrawerOpenInLargeLayout;
+            this.leftDrawerOpen = this._leftDrawerOpenInLargeLayout;
           }
         } else {
           // we are switching from medium to small
-          this._leftDrawerOpen = false;
-          this._rightDrawerOpen = false;
+          this.leftDrawerOpen = false;
+          this.rightDrawerOpen = false;
         }
       },
 
@@ -347,15 +349,15 @@ A wrapper element for layouts with two drawers.
             if (this._isMediumLayout) {
               // we are in medium layout
               if (this.prioritizedDrawer === 'left') {
-                this._rightDrawerOpen = false;
+                this.rightDrawerOpen = false;
               }
             } else {
               // we are in small layout
-              this._rightDrawerOpen = false;
+              this.rightDrawerOpen = false;
             }
           }
 
-          this._leftDrawerOpen = !this._leftDrawerOpen;
+          this.leftDrawerOpen = !this.leftDrawerOpen;
         }
       },
 
@@ -372,15 +374,15 @@ A wrapper element for layouts with two drawers.
             if (this._isMediumLayout) {
               // we are in medium layout
               if (this.prioritizedDrawer === 'right') {
-                this._leftDrawerOpen = false;
+                this.leftDrawerOpen = false;
               }
             } else {
               // we are in small layout
-              this._leftDrawerOpen = false;
+              this.leftDrawerOpen = false;
             }
           }
 
-          this._rightDrawerOpen = !this._rightDrawerOpen;
+          this.rightDrawerOpen = !this.rightDrawerOpen;
         }
       },
 
