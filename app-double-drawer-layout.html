@@ -16,6 +16,10 @@ A wrapper element for layouts with two drawers.
         display: block;
       }
 
+      :host([direction="rtl"]) {
+        direction: rtl;
+      }
+
       :host([fullbleed]) {
         @apply(--layout-fit);
       }
@@ -73,6 +77,15 @@ A wrapper element for layouts with two drawers.
       is: 'app-double-drawer-layout',
 
       properties: {
+        /**
+         * The direction of the layout, either 'ltr' or 'rtl'. In rtl, the left drawer is on the right and vice versa.
+         */
+        direction: {
+          type: String,
+          value: 'ltr',
+          reflectToAttribute: true,
+          observer: '_directionChanged'
+        },
         /**
          * If the viewport's width is smaller than this value, the panel will change to medium layout, i.e. the
          * non-prioritized drawer will be closed.
@@ -482,6 +495,10 @@ A wrapper element for layouts with two drawers.
             this._rightDrawerOpenInLargeLayout = newValue;
           }
         }
+      },
+
+      _directionChanged: function(newValue) {
+        console.log('direction changed: ' + newValue);
       }
     });
   </script>
